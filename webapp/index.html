@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Atelier Chat - Fine Arts RAG</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="grain"></div>
+  <main class="app-shell">
+    <aside class="panel">
+      <h1>Atelier Chat</h1>
+      <p class="subhead">Fine Arts Faculty Assistant</p>
+
+      <div class="row">
+        <button id="newChatBtn" class="btn btn-primary">New Chat</button>
+        <button id="resetBtn" class="btn btn-ghost">Reset Current</button>
+      </div>
+
+      <div class="status-wrap">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Disconnected</span>
+      </div>
+
+      <div id="chatTabs" class="chat-tabs"></div>
+      <p class="small">History is stored on backend per chat ID.</p>
+    </aside>
+
+    <section class="chat-stage">
+      <header class="stage-header" id="stageHeader">
+        <h2>Studio Conversation</h2>
+        <p>Ask about programs, admissions, contact info, fees, and announcements.</p>
+      </header>
+
+      <section id="chatLog" class="chat-log" aria-live="polite"></section>
+
+      <form id="composer" class="composer">
+        <textarea
+          id="messageInput"
+          rows="2"
+          placeholder="Ask something... (Shift+Enter for new line)"
+          required
+        ></textarea>
+        <button id="sendBtn" type="submit" class="btn btn-primary">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <template id="msgTemplate">
+    <article class="msg">
+      <div class="msg-head">
+        <span class="role"></span>
+      </div>
+      <p class="text"></p>
+      <ul class="sources"></ul>
+    </article>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>
