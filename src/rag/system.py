@@ -156,6 +156,7 @@ class RAGSystem:
             )
         
         user_question = routing_question or question
+        logger.info("[RAG DEBUG] user_question=%s", user_question.strip())
 
         # Catalog mode: return complete majors list from indexed docs.
         if self._is_major_list_query(user_question):
@@ -169,6 +170,12 @@ class RAGSystem:
 
         route = QueryRouter.route(user_question)
         retrieval_query = route.retrieval_query or question
+        logger.info(
+            "[RAG DEBUG] route_intents=%s metadata_filter=%s retrieval_query=%s",
+            route.intents,
+            route.metadata_filter,
+            retrieval_query.strip(),
+        )
         question_with_memory = self._augment_query_with_memory(
             question=retrieval_query,
             use_memory=use_memory
@@ -202,6 +209,11 @@ class RAGSystem:
         )
         result = chain_builder.query(query_chain, question_with_memory)
         first_pass_result = result
+        self._log_retrieved_documents(
+            docs=first_pass_result.get("source_documents", []),
+            tag="first_pass",
+            top_k=self.config.retrieval.top_k,
+        )
 
         # Fallback pass: if answer is insufficient, try baseline retriever without filters.
         insufficient = "i don't have sufficient information in the provided documents" in (
@@ -212,6 +224,11 @@ class RAGSystem:
             retry_result = chain_builder.query(self.rag_chain, question_with_memory)
             if retry_result.get("result"):
                 result = retry_result
+                self._log_retrieved_documents(
+                    docs=result.get("source_documents", []),
+                    tag="fallback_baseline",
+                    top_k=self.config.retrieval.top_k,
+                )
 
         # Deterministic fallback for contact-intent questions.
         answer_text = result.get("result", "")
@@ -234,11 +251,38 @@ class RAGSystem:
         
         if return_sources:
             response["sources"] = result.get("source_documents", [])
+            logger.info("[RAG DEBUG] source_count=%d", len(response["sources"]))
 
         if use_memory and self._memory_enabled:
             self._update_memory(question=question, answer=response["answer"])
+
+        answer_preview = response.get("answer", "").replace("\n", " ").strip()
+        logger.info(
+            "[RAG DEBUG] response_chars=%d preview=%s",
+            len(response.get("answer", "")),
+            answer_preview[:280],
+        )
         
         return response
+
+    @staticmethod
+    def _log_retrieved_documents(docs: List[Any], tag: str, top_k: int) -> None:
+        """Log top retrieved chunks for terminal debugging."""
+        docs = docs or []
+        logger.info("[RAG DEBUG] %s_retrieved=%d", tag, len(docs))
+        for i, doc in enumerate(docs[:top_k], start=1):
+            meta = getattr(doc, "metadata", {}) or {}
+            snippet = (getattr(doc, "page_content", "") or "").replace("\n", " ").strip()
+            logger.info(
+                "[RAG DEBUG] %s #%d source=%s chunk=%s section=%s url=%s snippet=%s",
+                tag,
+                i,
+                meta.get("source_file", "unknown"),
+                meta.get("chunk_id", "?"),
+                meta.get("section", ""),
+                meta.get("url", ""),
+                snippet[:140],
+            )
 
     @staticmethod
     def _contact_fallback_answer(user_question: str, source_documents: List[Any]) -> str:

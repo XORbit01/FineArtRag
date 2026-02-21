@@ -2,6 +2,7 @@
 Hybrid retrievers combining dense vector retrieval with lightweight lexical scoring.
 """
 
+import logging
 import re
 from typing import Any, Dict, List, Optional
 
@@ -15,6 +16,7 @@ except ImportError:
 
 from rank_bm25 import BM25Okapi
 
+logger = logging.getLogger(__name__)
 
 TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9]+")
 
@@ -83,6 +85,12 @@ class HybridRetriever(BaseRetriever):
     ) -> List[Document]:
         dense_docs = self.dense_retriever.invoke(query)
         keyword_docs = self.keyword_retriever.invoke(query)
+        logger.info(
+            "[RAG DEBUG] retriever dense=%d keyword=%d query=%s",
+            len(dense_docs),
+            len(keyword_docs),
+            (query or "").strip()[:180],
+        )
 
         # RRF merge by source/chunk id identity.
         fused: Dict[str, Dict[str, Any]] = {}
@@ -103,4 +111,16 @@ class HybridRetriever(BaseRetriever):
             fused[key]["score"] += 1.0 / (60 + rank)
 
         ranked = sorted(fused.values(), key=lambda x: x["score"], reverse=True)
-        return [item["doc"] for item in ranked[: self.k]]
+        top_docs = [item["doc"] for item in ranked[: self.k]]
+        for i, item in enumerate(ranked[: self.k], start=1):
+            doc = item["doc"]
+            meta = getattr(doc, "metadata", {}) or {}
+            logger.info(
+                "[RAG DEBUG] fused #%d score=%.4f source=%s chunk=%s section=%s",
+                i,
+                float(item["score"]),
+                meta.get("source_file", "unknown"),
+                meta.get("chunk_id", "?"),
+                meta.get("section", ""),
+            )
+        return top_docs

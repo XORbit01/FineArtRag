@@ -2,6 +2,7 @@
 Service layer for API endpoints using the core RAGSystem interface.
 """
 
+import logging
 import threading
 import uuid
 import time
@@ -12,6 +13,8 @@ from typing import Any, Dict, List, Optional
 
 from src.config.settings import AppConfig
 from src.rag.system import RAGSystem
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -186,6 +189,7 @@ class RAGApiService:
         if self._rag is None:
             self.start()
         assert self._rag is not None
+        logger.info("[RAG DEBUG] chat_id=%s question=%s", session_id, (message or "").strip())
 
         if self._is_greeting(message):
             greeting = self._build_greeting_answer()
@@ -207,6 +211,12 @@ class RAGApiService:
         )
         record.state.update(message, result["answer"], result.get("sources", []))
         record.updated_at = time.time()
+        logger.info(
+            "[RAG DEBUG] chat_id=%s answer_chars=%d sources=%d",
+            session_id,
+            len(result.get("answer", "")),
+            len(result.get("sources", [])),
+        )
         return result
 
     def _serialize_sources(self, sources: List[Any]) -> List[Dict[str, str]]:

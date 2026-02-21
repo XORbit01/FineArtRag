@@ -2,6 +2,7 @@
 FastAPI application factory for the RAG API.
 """
 
+import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -16,8 +17,18 @@ from src.api.service import RAGApiService
 from src.config.settings import AppConfig, config
 
 
+def _configure_root_logging(cfg: AppConfig) -> None:
+    """Ensure app/module logs are visible in terminal when running API mode."""
+    level = getattr(logging, cfg.logging.level.upper(), logging.INFO)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    if not root_logger.handlers:
+        logging.basicConfig(level=level, format=cfg.logging.format)
+
+
 def create_app(app_config: Optional[AppConfig] = None, force_recreate: bool = False) -> FastAPI:
     cfg = app_config or config
+    _configure_root_logging(cfg)
     service = RAGApiService(cfg, force_recreate=force_recreate)
 
     @asynccontextmanager

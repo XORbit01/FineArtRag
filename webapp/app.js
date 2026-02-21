@@ -98,28 +98,31 @@ async function addTypedAssistantMessage(text, sources = []) {
 
 function renderSources(sourcesList, sources) {
   if (!sourcesList) return;
-  if (!sources || !sources.length) {
-    sourcesList.remove();
+  sourcesList.innerHTML = "";
+  if (!Array.isArray(sources) || !sources.length) {
+    sourcesList.hidden = true;
     return;
   }
-  sourcesList.innerHTML = "";
+  sourcesList.hidden = false;
   sources.forEach((s) => {
     const li = document.createElement("li");
-    const label = s.url || s.source_file || "source";
-    if (s.url) {
+    const sourceUrl = s.url || s.source_url || "";
+    const sourceFile = s.source_file || s.sourceFile || "source";
+    const label = sourceUrl || sourceFile;
+    if (sourceUrl) {
       let pretty = label;
       try {
-        const u = new URL(s.url);
+        const u = new URL(sourceUrl);
         pretty = `${u.hostname}${u.pathname}`.replace(/\/$/, "");
       } catch (err) {
         // keep original label
       }
       const a = document.createElement("a");
-      a.href = s.url;
+      a.href = sourceUrl;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.className = "source-link";
-      a.title = s.url;
+      a.title = sourceUrl;
       a.textContent = `link: ${pretty}`;
       li.appendChild(a);
     } else {
